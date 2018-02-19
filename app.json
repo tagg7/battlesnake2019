@@ -2,6 +2,6 @@
   "name": "Battlesnake 2018",
   "description": "Entry for 2018 Battlesnake",
   "repository": "https://github.com/tagg7/battlesnake2018",
-  "logo": "http://icons.iconarchive.com/icons/blackvariant/button-ui-requests-13/96/Snake-icon.png",
-  "keywords": ["battlesnake"]
+  "website": "http://battlesnake.io",
+  "keywords": ["battlesnake","sendwithus"]
 }
