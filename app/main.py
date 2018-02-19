@@ -4,7 +4,7 @@ import random
 
 @bottle.route('/')
 def static():
-    return "the server is running"
+    return "SERVER IS RUNNING"
 
 @bottle.route('/static/<path:path>')
 def static(path):
