@@ -23,7 +23,7 @@ def start():
     return {
         'color': '#00FF00',
         'taunt': 'Catch me if you can!',
-        'head_url': 'https://i.imgur.com/S1AXmln.jpg',
+        'head_url': 'https://image.ibb.co/jqrof7/SNAKEFACE_cropped.jpg',
         'name': 'battlesnake-python',
         'head_type': 'fang',
         'tail_type': 'curled'
