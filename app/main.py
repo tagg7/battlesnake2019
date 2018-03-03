@@ -80,7 +80,11 @@ def move():
     for direction, value in validRoutines.items():
         shortestPathToTail = directionForShortestPathBetweenSnakeHeadAndPoint(board, snakeHead, snakeTail['x'], snakeTail['y'], direction, True, snakeId)
         if shortestPathToTail == None:
-            del pathToTailRoutines[direction]
+            floodFillValue = spaceAvailableForDirection(board, snakesLookup, snakeId, direction)
+            if floodFillValue == 0 or (floodFillValue * 1.5) < len(mySnake.coords):
+                del pathToTailRoutines[direction]
+            else:
+                pathToTailRoutines[direction] += (area - floodFillValue)
         else:
             pathToTailRoutines[direction] += (area - shortestPathToTail[0])
     
