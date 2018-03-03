@@ -78,7 +78,7 @@ def move():
     # Routine: Verify that each route allows us to get back to our tail (note: disregards spaces around other snake heads)
     # TODO: If the current space we are moving into has enough area for us to move around in such that our tail catches up to us, we should also count that as being a path
     for direction, value in validRoutines.items():
-        shortestPathToTail = directionForShortestPathBetweenSnakeHeadAndPoint(board, snakeHead, snakeTail['x'], snakeTail['y'], direction, True)
+        shortestPathToTail = directionForShortestPathBetweenSnakeHeadAndPoint(board, snakeHead, snakeTail['x'], snakeTail['y'], direction, True, snakeId)
         if shortestPathToTail == None:
             del pathToTailRoutines[direction]
         else:
@@ -361,21 +361,19 @@ def directionToReachClosestPieceOfFood(board, snakes, snakeId, foods, direction,
     
     snakeHead = snakes[snakeId].coords[0]
     
-    test = len(foods)
+    snakeHeadX = snakeHead['x']
+    snakeHeadY = snakeHead['y']
+    if direction == "left":
+        snakeHeadX = snakeHeadX - 1
+    if direction == "right":
+        snakeHeadX = snakeHeadX + 1
+    if direction == "up":
+        snakeHeadY = snakeHeadY - 1
+    if direction == "down":
+        snakeHeadY = snakeHeadY + 1
     
     for i in xrange(len(foods)):
         food = foods[i]
-        
-        snakeHeadX = snakeHead['x']
-        snakeHeadY = snakeHead['y']
-        if direction == "left":
-            snakeHeadX = snakeHeadX - 1
-        if direction == "right":
-            snakeHeadX = snakeHeadX + 1
-        if direction == "up":
-            snakeHeadY = snakeHeadY - 1
-        if direction == "down":
-            snakeHeadY = snakeHeadY + 1
             
         if snakeHeadX == food['x'] and snakeHeadY == food['y']:
             return 0, None
@@ -417,15 +415,15 @@ def directionToReachClosestPieceOfFood(board, snakes, snakeId, foods, direction,
     
     return shortestDistance, bestDirection
     
-def directionForShortestPathBetweenSnakeHeadAndPoint(board, snakeHead, endXPosition, endYPosition, direction, treatSquaresAdjacentToSnakeHeadsAsBlocking=False):
+def directionForShortestPathBetweenSnakeHeadAndPoint(board, snakeHead, endXPosition, endYPosition, direction, treatSquaresAdjacentToSnakeHeadsAsBlocking=False, snakeId=None):
     if direction == "left":
-        return directionForShortestPathBetweenTwoPoints(snakeHead['x'] - 1, snakeHead['y'], endXPosition, endYPosition, board, treatSquaresAdjacentToSnakeHeadsAsBlocking)
+        return directionForShortestPathBetweenTwoPoints(snakeHead['x'] - 1, snakeHead['y'], endXPosition, endYPosition, board, treatSquaresAdjacentToSnakeHeadsAsBlocking, snakeId)
     elif direction == "right":
-        return directionForShortestPathBetweenTwoPoints(snakeHead['x'] + 1, snakeHead['y'], endXPosition, endYPosition, board, treatSquaresAdjacentToSnakeHeadsAsBlocking)
+        return directionForShortestPathBetweenTwoPoints(snakeHead['x'] + 1, snakeHead['y'], endXPosition, endYPosition, board, treatSquaresAdjacentToSnakeHeadsAsBlocking, snakeId)
     elif direction == "up":
-        return directionForShortestPathBetweenTwoPoints(snakeHead['x'], snakeHead['y'] - 1, endXPosition, endYPosition, board, treatSquaresAdjacentToSnakeHeadsAsBlocking)
+        return directionForShortestPathBetweenTwoPoints(snakeHead['x'], snakeHead['y'] - 1, endXPosition, endYPosition, board, treatSquaresAdjacentToSnakeHeadsAsBlocking, snakeId)
     elif direction == "down":
-        return directionForShortestPathBetweenTwoPoints(snakeHead['x'], snakeHead['y'] + 1, endXPosition, endYPosition, board, treatSquaresAdjacentToSnakeHeadsAsBlocking)
+        return directionForShortestPathBetweenTwoPoints(snakeHead['x'], snakeHead['y'] + 1, endXPosition, endYPosition, board, treatSquaresAdjacentToSnakeHeadsAsBlocking, snakeId)
     
 '''
 Calculates the shortest path in a grid with obstacles in an extremely computationally efficient way.
@@ -433,7 +431,7 @@ Returns a tuple, with the first item being the length of the path, and the secon
 immediate direction to travel in order to follow that path.
 https://www.raywenderlich.com/4946/introduction-to-a-pathfinding
 '''
-def directionForShortestPathBetweenTwoPoints(startXPosition, startYPosition, endXPosition, endYPosition, board, treatSquaresAdjacentToSnakeHeadsAsBlocking=False):
+def directionForShortestPathBetweenTwoPoints(startXPosition, startYPosition, endXPosition, endYPosition, board, treatSquaresAdjacentToSnakeHeadsAsBlocking=False, snakeId=None):
     if startXPosition == endXPosition and startYPosition == endYPosition:
         return 0, None
         
@@ -491,7 +489,7 @@ def directionForShortestPathBetweenTwoPoints(startXPosition, startYPosition, end
         adjacentSquaresCoords = [(currentSquare.coords[0] - 1, currentSquare.coords[1]), (currentSquare.coords[0] + 1, currentSquare.coords[1]), (currentSquare.coords[0], currentSquare.coords[1] - 1), (currentSquare.coords[0], currentSquare.coords[1] + 1)]
         for adjacentSquareCoords in adjacentSquaresCoords:
             # Verify this is a valid square
-            if (snakeCanMoveToPosition(adjacentSquareCoords[0], adjacentSquareCoords[1], board, treatSquaresAdjacentToSnakeHeadsAsBlocking, startXPosition, startYPosition) == False and endSquareCoords != (adjacentSquareCoords[0], adjacentSquareCoords[1])):
+            if (snakeCanMoveToPosition(adjacentSquareCoords[0], adjacentSquareCoords[1], board, treatSquaresAdjacentToSnakeHeadsAsBlocking, snakeId) == False and endSquareCoords != (adjacentSquareCoords[0], adjacentSquareCoords[1])):
                 continue
             
             if adjacentSquareCoords in closedList:
@@ -657,7 +655,7 @@ def smallerSnakeCanCompeteForSquare(board, snakes, snakeId, direction):
 Returns true if the specified position is empty (and inside the board). If the space is currently occupied by a snake's
 tail, then it will also return true. For all other scenarios, returns false.
 '''
-def snakeCanMoveToPosition(xPosition, yPosition, board, treatSquaresAdjacentToSnakeHeadsAsBlocking=False, originalXPosition=0, originalYPosition=0):
+def snakeCanMoveToPosition(xPosition, yPosition, board, treatSquaresAdjacentToSnakeHeadsAsBlocking=False, snakeId=None):
     boardWidth = len(board)
     boardHeight = len(board[0])
     
@@ -679,12 +677,9 @@ def snakeCanMoveToPosition(xPosition, yPosition, board, treatSquaresAdjacentToSn
             if adjacentSquareCoords[0] >= boardWidth or adjacentSquareCoords[0] < 0 or adjacentSquareCoords[1] >= boardHeight or adjacentSquareCoords[1] < 0:
                 continue
             
-            if adjacentSquareCoords[0] == originalXPosition and adjacentSquareCoords[1] == originalYPosition:
-                continue
-            
             if isinstance(board[adjacentSquareCoords[0]][adjacentSquareCoords[1]], SnakeSegment):
                 snakeSegment = board[adjacentSquareCoords[0]][adjacentSquareCoords[1]]
-                if snakeSegment.segmentNum == 0:
+                if snakeSegment.segmentNum == 0 and snakeSegment.snakeId != snakeId:
                     return False
     
     return True
