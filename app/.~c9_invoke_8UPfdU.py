@@ -168,16 +168,16 @@ def move():
     for direction, value in safePathToTailRoutines.items():
         moveForFood = directionToReachClosestPieceOfFood(board, snakesLookup, snakeId, foods, direction)
         if moveForFood != None:
-            safePathToTailRoutines[direction] += mySnake.health - moveForFood[0]
+            safePathToTailRoutines[direction] += (100 - mySnake.health) - moveForFood[0]
             #print "Snake ID: " + snakeId + " | Direction: " + direction + " | Food Value: " + str(mySnake.health - moveForFood[0])
             if bestDirectionToEatFood == None or moveForFood[0] < leastSpaces:
                 leastSpaces = moveForFood[0]
                 bestDirectionToEatFood = direction
     
     if bestDirectionToEatFood != None:
-        if leastSpaces < 3:
+        if leastSpaces < 5:
             return returnMoveResponse(bestDirectionToEatFood, "Nom nom nom")
-        elif mySnake.health < 50:
+        elif mySnake.health < 35:
             return returnMoveResponse(bestDirectionToEatFood, "I'm starving!")
     elif mySnake.health < 50:
         for direction, value in safePathToTailRoutines.items():
