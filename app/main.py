@@ -175,10 +175,10 @@ def move():
                 bestDirectionToEatFood = direction
     
     if bestDirectionToEatFood != None:
-        if leastSpaces < 3 and mySnake.health < 75:
+        if leastSpaces < 3 and mySnake.health < 60:
             return returnMoveResponse(bestDirectionToEatFood, "Nom nom nom")
-        elif leastSpaces < 2:
-            return returnMoveResponse(bestDirectionToEatFood, "Nom nom nom")
+        # elif leastSpaces < 2:
+        #     return returnMoveResponse(bestDirectionToEatFood, "Nom nom nom")
         elif mySnake.health < 40:
             return returnMoveResponse(bestDirectionToEatFood, "Feed me!")
     elif mySnake.health < 50:
