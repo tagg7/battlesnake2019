@@ -35,10 +35,10 @@ def move():
     
     # Extract data from request
     snakeId = request['you']['id']
-    snakes = request['snakes']
-    foods = request['food']
-    boardWidth = request['width']
-    boardHeight = request['height']
+    snakes = request['board']['snakes']
+    foods = request['board']['food']
+    boardWidth = request['board']['width']
+    boardHeight = request['board']['height']
     area = boardWidth * boardHeight
 
     # Generate lookup objects 
