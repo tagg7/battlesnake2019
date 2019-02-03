@@ -35,8 +35,8 @@ def move():
     
     # Extract data from request
     snakeId = request['you']['id']
-    snakes = request['snakes']['data']
-    foods = request['food']['data']
+    snakes = request['snakes']
+    foods = request['food']
     boardWidth = request['width']
     boardHeight = request['height']
     area = boardWidth * boardHeight
@@ -788,7 +788,7 @@ def generateBoard(height, width, snakes, foods):
         
     for snake in snakes:
         i = 0
-        segments = snake['body']['data']
+        segments = snake['body']
         
         for coords in segments:
             # Check that this isn't already the head (when the snake starts, all body segments are on top of its head)
@@ -835,7 +835,7 @@ def generateSnakesLookup(snakes):
     for snake in snakes:
         id = snake['id']
         health = snake['health']
-        coords = snake['body']['data']
+        coords = snake['body']
         
         snakeLookup = Snake(len(coords), health, coords)
         snakesLookup[id] = snakeLookup
