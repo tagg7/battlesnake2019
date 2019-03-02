@@ -5,6 +5,8 @@ import operator
 from math import ceil
 from copy import copy, deepcopy
 
+debugMode = False
+
 @bottle.route('/')
 def static():
     return "SERVER IS RUNNING"
@@ -40,7 +42,10 @@ def end():
 @bottle.post('/move')
 def move():
     request = bottle.request.json
-    #print(request)
+    
+    global debugMode
+    if debugMode:
+        print(request)
     
     # Extract data from request
     snakeId = request['you']['id']
@@ -55,17 +60,18 @@ def move():
     floodFillNoTailMultiplier = 1.5
     killMultiplier = 10
     straightLineMultiplier = 1
-    followOtherSnakeMultiplier = 1
-    emptyRectangleMultiplier = 4
+    followOtherSnakeMultiplier = 0.5
+    emptyRectangleMultiplier = 1
     restrictOtherSnakeMultiplier = 5
     otherSnakeEatingLengthMultiplier = 10
+    distanceFromOtherSnakeHeadsMultiplier = 1
     
     minHealthToGetNearbyFood = 75
     minHealthToGetFood = 50
     minHealthToSeekFood = 35
     minSpacesToGetFoodWhenHungry = 4
     minSpacesToGetFood = 2
-    isGlutonousSnake = True
+    isGlutonousSnake = False
 
     # Generate lookup objects 
     board = generateBoard(boardHeight, boardWidth, snakes, foods)
@@ -91,8 +97,8 @@ def move():
             
     # If no valid moves; kill self
     if not validRoutines:
-        return returnMoveResponse("down", "Goodbye cruel world...")
-        
+        return returnMoveResponse(snakeId, "down", "Goodbye cruel world...")
+    
     pathToTailRoutines = validRoutines.copy()
     
     # Determine which moves would put us at risk of colliding with other snakes
@@ -116,8 +122,12 @@ def move():
             if floodFillValue == 0 or (floodFillValue * floodFillNoTailMultiplier) < len(mySnake.coords):
                 del pathToTailRoutines[direction]
             else:
+                floodFillScore = (area - (floodFillValue * floodFillNoTailMultiplier))
+                logMessage(snakeId, "Direction: " + direction + ", Score: " + str(floodFillScore) + " (Flood Fill)")
                 pathToTailRoutines[direction] += (area - (floodFillValue * floodFillNoTailMultiplier))
         else:
+            floodFillScore = (area - (shortestPathToTail[0] * floodFillMultiplier))
+            logMessage(snakeId, "Direction: " + direction + ", Score: " + str(floodFillScore) + " (Flood Fill)")
             pathToTailRoutines[direction] += (area - (shortestPathToTail[0] * floodFillMultiplier))
     
     # Routine: Verify each route again if no safe path exists but don't treat other snake heads as special
@@ -129,7 +139,9 @@ def move():
             if shortestPathToTail == None:
                 del pathToTailRoutines[direction]
             else:
-                pathToTailRoutines[direction] += (area - (shortestPathToTail[0] * floodFillMultiplier))
+                floodFillValue = (area - (shortestPathToTail[0] * floodFillMultiplier))
+                logMessage(snakeId, "Direction: " + direction + ", Score: " + str(floodFillValue) + " (Flood Fill)")
+                pathToTailRoutines[direction] += floodFillValue
             
     # If no viable routes back to our tail, then find the path to maximize the time we can stay alive
     if not pathToTailRoutines:
@@ -140,6 +152,8 @@ def move():
         
         for direction, value in validRoutines.items():
             movesAvailable = spaceAvailableForDirection(board, snakesLookup, snakeId, direction)
+            logMessage(snakeId, "Direction: " + direction + ", Moves: " + str(movesAvailable) + " (Trapped)")
+            
             if ((movesAvailable > mostSpaces and direction not in largerSnakeCanMoveToSquareValues) 
             or (movesAvailable > mostSpaces and direction in largerSnakeCanMoveToSquareValues and currentDirectionCollidesWithSnake) 
             or (movesAvailable > 10 and direction not in largerSnakeCanMoveToSquareValues and currentDirectionCollidesWithSnake)):
@@ -147,7 +161,7 @@ def move():
                 bestDirectionToStayAliveWhenBlocked = direction
                 currentDirectionCollidesWithSnake = direction in largerSnakeCanMoveToSquareValues
                 
-        return returnMoveResponse(bestDirectionToStayAliveWhenBlocked, "I'm trapped!")
+        return returnMoveResponse(snakeId, bestDirectionToStayAliveWhenBlocked, "I'm trapped!")
     
     # Determine which of the paths back to our tail are not at risk of colliding with another snake's head
     safePathToTailRoutines = {}
@@ -157,7 +171,7 @@ def move():
     
     # If only one route exists that does not risk colliding with another snake's head, select it
     if len(safePathToTailRoutines) == 1:
-        return returnMoveResponse(safePathToTailRoutines.keys()[0], "That was a close one!")
+        return returnMoveResponse(snakeId, safePathToTailRoutines.keys()[0], "That was a close one!")
     
     # If all squares are at risk of collision, choose the one furthest from the nearest food
     if len(safePathToTailRoutines) == 0:
@@ -184,13 +198,17 @@ def move():
         if bestDirectionToEscapeSnakeAwayFromFood == None:
             bestDirectionToEscapeSnakeAwayFromFood = pathToTailRoutines.items()[0]
         
-        return returnMoveResponse(bestDirectionToEscapeSnakeAwayFromFood, "I'm in trouble...")
+        logMessage(snakeId, "Direction: " + direction + ", Spaces to Food: " + str(mostSpacesForFood) + " (No Safe Squares)")
+        
+        return returnMoveResponse(snakeId, bestDirectionToEscapeSnakeAwayFromFood, "I'm in trouble...")
     
     # Routine: Get rekt (kill a smaller snake)
     for direction, value in safePathToTailRoutines.items():
         canSmallerSnakeCompete = smallerSnakeCanCompeteForSquare(board, snakesLookup, snakeId, direction)
         if canSmallerSnakeCompete:
-            safePathToTailRoutines[direction] += (10 * killMultiplier)
+            killValue = (10 * killMultiplier)
+            logMessage(snakeId, "Direction: " + direction + ", Score: " + str(killValue) + " (Kill)")
+            safePathToTailRoutines[direction] += killValue
     
     # Routine: Go towards food
     leastSpaces = -1
@@ -199,19 +217,23 @@ def move():
     for direction, value in safePathToTailRoutines.items():
         moveForFood = directionToReachClosestPieceOfFood(board, snakesLookup, snakeId, foods, direction)
         if moveForFood != None:
-            safePathToTailRoutines[direction] += (100 - mySnake.health) - moveForFood[0]
-            #print "Snake ID: " + snakeId + " | Direction: " + direction + " | Food Value: " + str((100 - mySnake.health) - moveForFood[0])
+            foodValue = ((100 - mySnake.health) - moveForFood[0]) * foodMultiplier
+            safePathToTailRoutines[direction] += foodValue
+            logMessage(snakeId, "Direction: " + direction + ", Score: " + str(foodValue) + " (Food)")
             if bestDirectionToEatFood == None or moveForFood[0] < leastSpaces:
                 leastSpaces = moveForFood[0]
                 bestDirectionToEatFood = direction
     
     if bestDirectionToEatFood != None:
         if leastSpaces < minSpacesToGetFoodWhenHungry and mySnake.health < minHealthToGetNearbyFood:
-            return returnMoveResponse(bestDirectionToEatFood, "Nom nom nom")
+            logMessage(snakeId, "Decided to move towards food because it was within " + str(minSpacesToGetFoodWhenHungry) + " spaces and the snake's health is " + str(mySnake.health))
+            return returnMoveResponse(snakeId, bestDirectionToEatFood, "Nom nom nom")
         elif isGlutonousSnake and leastSpaces < minSpacesToGetFood:
-            return returnMoveResponse(bestDirectionToEatFood, "Nom nom nom")
+            logMessage(snakeId, "Decided to move towards food because it was within " + str(minSpacesToGetFood))
+            return returnMoveResponse(snakeId, bestDirectionToEatFood, "Nom nom nom")
         elif mySnake.health < minHealthToGetFood:
-            return returnMoveResponse(bestDirectionToEatFood, "Feed me!")
+            logMessage(snakeId, "Decided to move towards food because snake's health is " + str(mySnake.health))
+            return returnMoveResponse(snakeId, bestDirectionToEatFood, "Feed me!")
     elif mySnake.health < minHealthToSeekFood:
         for direction, value in safePathToTailRoutines.items():
             moveForFood = directionToReachClosestPieceOfFood(board, snakesLookup, snakeId, foods, direction, True)
@@ -220,17 +242,22 @@ def move():
                     leastSpaces = moveForFood[0]
                     bestDirectionToEatFood = direction
         
-        return returnMoveResponse(bestDirectionToEatFood, "Watch out, because I'm hungry!")
+        logMessage(snakeId, "Decided to move towards food because snake's health is " + str(mySnake.health))
+        return returnMoveResponse(snakeId, bestDirectionToEatFood, "Watch out, because I'm hungry!")
 
     # Routine: Travel in a straight line
     moveForStraightLine = directionToTravelInAStraightLine(mySnake)
     if moveForStraightLine != None and moveForStraightLine in safePathToTailRoutines:
-        safePathToTailRoutines[moveForStraightLine] += (10 * straightLineMultiplier)
+        straightLineValue = (10 * straightLineMultiplier)
+        logMessage(snakeId, "Direction: " + moveForStraightLine + ", Score: " + str(straightLineValue) + " (Straight Line)")
+        safePathToTailRoutines[moveForStraightLine] += straightLineValue
             
     # Routine: Follow another snake's tail
     moveForSnakeToFollow = directionToFollowClosestSnake(board, snakesLookup, snakeId)
     if moveForSnakeToFollow != None and moveForSnakeToFollow in safePathToTailRoutines:
-        safePathToTailRoutines[moveForSnakeToFollow] += (10 * followOtherSnakeMultiplier)
+        followSnakeValue = (10 * followOtherSnakeMultiplier)
+        logMessage(snakeId, "Direction: " + moveForSnakeToFollow + ", Score: " + str(followSnakeValue) + " (Follow Snake)")
+        safePathToTailRoutines[moveForSnakeToFollow] += followSnakeValue
             
     # Routine: Move towards largest empty rectangle
     leastSpaces = -1
@@ -240,8 +267,9 @@ def move():
     for direction, value in safePathToTailRoutines.items():
         moveToLargestRectangle = directionForShortestPathBetweenSnakeHeadAndPoint(board, snakeHead, largestRectangleCenterPoint[0], largestRectangleCenterPoint[1], direction)
         if moveToLargestRectangle != None:
-            safePathToTailRoutines[direction] += (area - moveToLargestRectangle[0]) * emptyRectangleMultiplier
-            #print "Snake ID: " + snakeId + " | Direction: " + direction + " | Area Value: " + str((area - moveToLargestRectangle[0]) * 3)
+            largestRectangleValue = (area - moveToLargestRectangle[0]) * emptyRectangleMultiplier
+            logMessage(snakeId, "Direction: " + direction + ", Score: " + str(largestRectangleValue) + " (Largest Rectangle)")
+            safePathToTailRoutines[direction] += largestRectangleValue
             if bestDirectionToGetToMaxRectangle == None or moveToLargestRectangle[0] < leastSpaces:
                 leastSpaces = moveToLargestRectangle[0]
                 bestDirectionToGetToMaxRectangle = direction
@@ -249,7 +277,15 @@ def move():
     # Routine: Do not follow a snake that is about to eat a piece of food
     for direction, value in safePathToTailRoutines.items():
         if directionContainsSnakeThatMayEatFood(direction, board, snakesLookup, snakeId):
-            safePathToTailRoutines[direction] -= (10 * otherSnakeEatingLengthMultiplier)
+            snakeEatingValue = (10 * otherSnakeEatingLengthMultiplier)
+            logMessage(snakeId, "Direction: " + direction + ", Score: " + str(snakeEatingValue) + " (Other Snake About to Eat)")
+            safePathToTailRoutines[direction] -= snakeEatingValue
+            
+    # Routine: Determine the distance that allows us to move the furthest away from other snake heads
+    directionFurthestFromSnakeHeads = getDirectionToMoveFurthestAwayFromOtherSnakeHeads(snakesLookup, snakeId, safePathToTailRoutines)
+    furthestFromSnakeHeadsValue = (10 * distanceFromOtherSnakeHeadsMultiplier)
+    logMessage(snakeId, "Direction: " + directionFurthestFromSnakeHeads + ", Score: " + str(furthestFromSnakeHeadsValue) + " (Distance From Snake Heads)")
+    safePathToTailRoutines[directionFurthestFromSnakeHeads] += furthestFromSnakeHeadsValue
 
     # Routine: Determine if any move we do will restrict another snake's ability to move
     snakesWithCurrentFlashFloodValues = {}
@@ -282,18 +318,26 @@ def move():
             otherSnakeHead = newSnakeValue.coords[0]
             movesAvailable = flashFoodAreaFromSpace(newBoard, otherSnakeHead['x'], otherSnakeHead['y'], True)
             
+            restrictSnakeValue = (10 * restrictOtherSnakeMultiplier)
+            
             # We are allowing the snake to move MORE FREELY
             if snakesWithCurrentFlashFloodValues[newSnakeId] == 0 and movesAvailable > 0:
-                safePathToTailRoutines[direction] -= (10 * restrictOtherSnakeMultiplier)
+                logMessage(snakeId, "Direction: " + direction + ", Score: " + str(-1 * restrictSnakeValue) + " (Added Moves for Other Snake)")
+                safePathToTailRoutines[direction] -= restrictSnakeValue
             # We are decreasing the snake's movement
             elif movesAvailable + 5 < snakesWithCurrentFlashFloodValues[newSnakeId]:
-                #print "Reduced moves from", snakesWithCurrentFlashFloodValues[newSnakeId], "to", movesAvailable
-                safePathToTailRoutines[direction] += (10 * restrictOtherSnakeMultiplier)
+                logMessage(snakeId, "Direction: " + direction + ", Score: " + str(restrictSnakeValue) + " (Reduced Moves for Other Snake)")
+                safePathToTailRoutines[direction] += restrictSnakeValue
+
+    for direction, value in safePathToTailRoutines.items():
+        logMessage(snakeId, "Final: Direction: " + direction + ", Score: " + str(value))
 
     # Pick the routine with the largest value
-    return returnMoveResponse(max(safePathToTailRoutines.iteritems(), key=operator.itemgetter(1))[0], taunt)
+    return returnMoveResponse(snakeId, max(safePathToTailRoutines.iteritems(), key=operator.itemgetter(1))[0], taunt)
     
-def returnMoveResponse(move, taunt):
+def returnMoveResponse(snakeId, move, taunt):
+    logMessage(snakeId, "Moved " + move)
+    
     return {
         'move': move,
         'taunt': taunt
@@ -800,6 +844,41 @@ def directionIsValid(board, snakes, snakeId, direction):
     
     return snakeCanMoveToPosition(xPosition, yPosition, board)
 
+def getDirectionToMoveFurthestAwayFromOtherSnakeHeads(snakes, snakeId, validMoves):
+    snake = snakes[snakeId]
+    snakeHead = snake.coords[0]
+    
+    furthestDistanceForAllMoves = -1
+    directionForFurthestDistance = None
+    
+    for move in validMoves:
+        xPosition = snakeHead['x']
+        yPosition = snakeHead['y']
+        
+        if move == "left":
+            xPosition -= 1
+        elif move == "right":
+            xPosition += 1
+        elif move == "up":
+            yPosition -= 1
+        elif move == "down":
+            yPosition += 1
+        
+        shortestDistance = -1
+        for otherSnakeId, otherSnake in snakes.items():
+            if otherSnakeId == snakeId:
+                continue
+            
+            distance = distanceToCoord(xPosition, yPosition, otherSnake.coords[0]['x'], otherSnake.coords[0]['y'])
+            if shortestDistance == -1 or distance < shortestDistance:
+                shortestDistance = distance
+                
+        if furthestDistanceForAllMoves == -1 or furthestDistanceForAllMoves < shortestDistance:
+            directionForFurthestDistance = move
+            furthestDistanceForAllMoves = shortestDistance
+            
+    return directionForFurthestDistance
+
 '''
 Returns the exact distance to the selected space in squares.
 '''
@@ -968,6 +1047,11 @@ def generateSnakesLookup(snakes):
         snakesLookup[id] = snakeLookup
     
     return snakesLookup
+    
+def logMessage(snakeId, message):
+    global debugMode
+    if (debugMode):
+        print(snakeId + ": " + message)
     
 class PathfinderSegment:
     def __init__(self, coords, parent, gValue, hValue, fValue):
