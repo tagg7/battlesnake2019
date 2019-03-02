@@ -66,6 +66,9 @@ def move():
     otherSnakeEatingLengthMultiplier = 10
     distanceFromOtherSnakeHeadsMultiplier = 1
     
+    if request['turn'] < 20:
+        distanceFromOtherSnakeHeadsMultiplier = 10
+    
     minHealthToGetNearbyFood = 75
     minHealthToGetFood = 50
     minHealthToSeekFood = 35
