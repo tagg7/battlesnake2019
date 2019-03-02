@@ -55,7 +55,7 @@ def move():
     boardHeight = request['board']['height']
     area = boardWidth * boardHeight
     
-    foodMultiplier = 1
+    foodMultiplier = 5
     floodFillMultiplier = 6
     floodFillNoTailMultiplier = 1.5
     killMultiplier = 10
@@ -69,12 +69,12 @@ def move():
     if request['turn'] < 20:
         distanceFromOtherSnakeHeadsMultiplier = 10
     
-    minHealthToGetNearbyFood = 75
+    minHealthToGetNearbyFood = 90
     minHealthToGetFood = 50
     minHealthToSeekFood = 35
     minSpacesToGetFoodWhenHungry = 4
-    minSpacesToGetFood = 2
-    isGlutonousSnake = False
+    minSpacesToGetFood = 3
+    isGlutonousSnake = True
 
     # Generate lookup objects 
     board = generateBoard(boardHeight, boardWidth, snakes, foods)
