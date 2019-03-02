@@ -60,11 +60,11 @@ def move():
     floodFillNoTailMultiplier = 1.5
     killMultiplier = 20
     straightLineMultiplier = 1
-    followOtherSnakeMultiplier = 3
+    followOtherSnakeMultiplier = 2
     emptyRectangleMultiplier = 3
     restrictOtherSnakeMultiplier = 5
     otherSnakeEatingLengthMultiplier = 10
-    distanceFromOtherSnakeHeadsMultiplier = 2
+    distanceFromOtherSnakeHeadsMultiplier = 3
     
     if request['turn'] < 20:
         distanceFromOtherSnakeHeadsMultiplier = 10
