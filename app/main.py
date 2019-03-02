@@ -629,6 +629,9 @@ Returns the direction for the snake to travel in a straight line if it has alrea
 def directionToTravelInAStraightLine(snake):
     move = None;
     
+    if len(snake.coords) <= 1:
+        return move
+    
     if snake.coords[0]['x'] == snake.coords[1]['x']:
         if snake.coords[0]['y'] > snake.coords[1]['y']:
             move = "down"
