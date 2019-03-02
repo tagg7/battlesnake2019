@@ -57,7 +57,6 @@ def move():
     mySnake = snakesLookup[snakeId]
     snakeHead = mySnake.coords[0]
     snakeTail = mySnake.coords[len(mySnake.coords) - 1]
-    snakeSegmentBeforeTail = mySnake.coords[len(mySnake.coords) - 2]
     
     move = None
     moveDecided = False
@@ -88,12 +87,7 @@ def move():
     # Routine: Verify that each route allows us to get back to our tail (note: disregards spaces around other snake heads)
     # TODO: If the current space we are moving into has enough area for us to move around in such that our tail catches up to us, we should also count that as being a path
     for direction, value in validRoutines.items():
-        itemInSpace = getValueInDirection(board, snakeHead['x'], snakeHead['y'], direction)
-        if itemInSpace != 'F':
-            shortestPathToTail = directionForShortestPathBetweenSnakeHeadAndPoint(board, snakeHead, snakeSegmentBeforeTail['x'], snakeSegmentBeforeTail['y'], direction, True, snakeId)
-        else:
-            shortestPathToTail = directionForShortestPathBetweenSnakeHeadAndPoint(board, snakeHead, snakeTail['x'], snakeTail['y'], direction, True, snakeId)
-        
+        shortestPathToTail = directionForShortestPathBetweenSnakeHeadAndPoint(board, snakeHead, snakeTail['x'], snakeTail['y'], direction, True, snakeId)
         if shortestPathToTail == None:
             floodFillValue = spaceAvailableForDirection(board, snakesLookup, snakeId, direction)
             if floodFillValue == 0 or (floodFillValue * 1.5) < len(mySnake.coords):
@@ -101,7 +95,7 @@ def move():
             else:
                 pathToTailRoutines[direction] += (area - (floodFillValue * 1.5))
         else:
-            pathToTailRoutines[direction] += (area - (shortestPathToTail[0] * 6))
+            pathToTailRoutines[direction] += (area - shortestPathToTail[0])
     
     # Routine: Verify each route again if no safe path exists but don't treat other snake heads as special
     if not pathToTailRoutines:
@@ -112,7 +106,7 @@ def move():
             if shortestPathToTail == None:
                 del pathToTailRoutines[direction]
             else:
-                pathToTailRoutines[direction] += (area - (shortestPathToTail[0] * 6))
+                pathToTailRoutines[direction] += (area - shortestPathToTail[0])
             
     # If no viable routes back to our tail, then find the path to maximize the time we can stay alive
     if not pathToTailRoutines:
@@ -184,7 +178,7 @@ def move():
         moveForFood = directionToReachClosestPieceOfFood(board, snakesLookup, snakeId, foods, direction)
         if moveForFood != None:
             safePathToTailRoutines[direction] += (100 - mySnake.health) - moveForFood[0]
-            #print "Snake ID: " + snakeId + " | Direction: " + direction + " | Food Value: " + str((100 - mySnake.health) - moveForFood[0])
+            print "Snake ID: " + snakeId + " | Direction: " + direction + " | Food Value: " + str((100 - mySnake.health) - moveForFood[0])
             if bestDirectionToEatFood == None or moveForFood[0] < leastSpaces:
                 leastSpaces = moveForFood[0]
                 bestDirectionToEatFood = direction
@@ -298,7 +292,7 @@ def getLocationForMaximumRectangle(board):
         
         for j in range(0, n):
             if j < (n - 1):
-                if snakeCanMoveToPosition(i, j, board, True):
+                if snakeCanMoveToPosition(i, j, board):
                     height[j] += 1
                 else:
                     height[j] = 0
@@ -848,41 +842,16 @@ def surroundingSquaresContainFood(x, y, board):
     upPositionY = y - 1
     downPositionY = y + 1
     
-    if leftPositionX >= 0 and leftPositionX < boardWidth and board[leftPositionX][y] == "F":
+    if leftPositionX > 0 and leftPositionX < boardWidth and board[leftPositionX][y] == "F":
         return True
-    if rightPositionX >= 0 and rightPositionX < boardWidth and board[rightPositionX][y] == "F":
+    if rightPositionX > 0 and rightPositionX < boardWidth and board[rightPositionX][y] == "F":
         return True
-    if upPositionY >= 0 and upPositionY < boardHeight and board[x][upPositionY] == "F":
+    if upPositionY > 0 and upPositionY < boardHeight and board[x][upPositionY] == "F":
         return True
-    if downPositionY >= 0 and downPositionY < boardHeight and board[x][downPositionY] == "F":
+    if downPositionY > 0 and downPositionY < boardHeight and board[x][downPositionY] == "F":
         return True
         
     return False
-    
-def getValueInDirection(board, x, y, direction):
-    if direction == "left":
-        xPosition = x - 1
-        yPosition = y
-    elif direction == "right":
-        xPosition = x + 1
-        yPosition = y
-    elif direction == "up":
-        xPosition = x
-        yPosition = y - 1
-    elif direction == "down":
-        xPosition = x
-        yPosition = y + 1
-        
-    boardWidth = len(board)
-    boardHeight = len(board[0])
-    
-    # Verify that this position is not outside the board area
-    if xPosition < 0 or xPosition >= boardWidth:
-        return -1
-    if yPosition < 0 or yPosition >= boardHeight:
-        return -1
-        
-    return board[x][y]
 
 '''
 Generates a two dimensional board.
