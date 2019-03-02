@@ -23,12 +23,12 @@ def start():
     #board_height = data.get('height')
 
     return {
-        'color': '#00FF00',
+        'color': '#E8E8E8',
         'taunt': 'Catch me if you can!',
         'head_url': 'https://i.imgur.com/G8YsaF6.png',
-        'name': 'battlesnake-python',
-        'head_type': 'fang',
-        'tail_type': 'curled'
+        'name': 'SNAKEFACE',
+        'headType': 'smile',
+        'tailType': 'block-bum'
     }
     
 @bottle.post('/end')
@@ -58,23 +58,23 @@ def move():
     foodMultiplier = 5
     floodFillMultiplier = 6
     floodFillNoTailMultiplier = 1.5
-    killMultiplier = 10
+    killMultiplier = 20
     straightLineMultiplier = 1
-    followOtherSnakeMultiplier = 0.5
-    emptyRectangleMultiplier = 1
+    followOtherSnakeMultiplier = 3
+    emptyRectangleMultiplier = 3
     restrictOtherSnakeMultiplier = 5
     otherSnakeEatingLengthMultiplier = 10
-    distanceFromOtherSnakeHeadsMultiplier = 1
+    distanceFromOtherSnakeHeadsMultiplier = 2
     
     if request['turn'] < 20:
         distanceFromOtherSnakeHeadsMultiplier = 10
     
-    minHealthToGetNearbyFood = 90
+    minHealthToGetNearbyFood = 70
     minHealthToGetFood = 50
     minHealthToSeekFood = 35
     minSpacesToGetFoodWhenHungry = 4
-    minSpacesToGetFood = 3
-    isGlutonousSnake = True
+    minSpacesToGetFood = 2
+    isGlutonousSnake = False
 
     # Generate lookup objects 
     board = generateBoard(boardHeight, boardWidth, snakes, foods)
@@ -229,14 +229,17 @@ def move():
     
     if bestDirectionToEatFood != None:
         if leastSpaces < minSpacesToGetFoodWhenHungry and mySnake.health < minHealthToGetNearbyFood:
-            logMessage(snakeId, "Decided to move towards food because it was within " + str(minSpacesToGetFoodWhenHungry) + " spaces and the snake's health is " + str(mySnake.health))
-            return returnMoveResponse(snakeId, bestDirectionToEatFood, "Nom nom nom")
+            #logMessage(snakeId, "Decided to move towards food because it was within " + str(minSpacesToGetFoodWhenHungry) + " spaces and the snake's health is " + str(mySnake.health))
+            #return returnMoveResponse(snakeId, bestDirectionToEatFood, "Nom nom nom")
+            safePathToTailRoutines[bestDirectionToEatFood] += (10 * foodMultiplier)
         elif isGlutonousSnake and leastSpaces < minSpacesToGetFood:
-            logMessage(snakeId, "Decided to move towards food because it was within " + str(minSpacesToGetFood))
-            return returnMoveResponse(snakeId, bestDirectionToEatFood, "Nom nom nom")
+            #logMessage(snakeId, "Decided to move towards food because it was within " + str(minSpacesToGetFood))
+            #return returnMoveResponse(snakeId, bestDirectionToEatFood, "Nom nom nom")
+            safePathToTailRoutines[bestDirectionToEatFood] += (10 * foodMultiplier)
         elif mySnake.health < minHealthToGetFood:
-            logMessage(snakeId, "Decided to move towards food because snake's health is " + str(mySnake.health))
-            return returnMoveResponse(snakeId, bestDirectionToEatFood, "Feed me!")
+            #logMessage(snakeId, "Decided to move towards food because snake's health is " + str(mySnake.health))
+            #return returnMoveResponse(snakeId, bestDirectionToEatFood, "Feed me!")
+            safePathToTailRoutines[bestDirectionToEatFood] += (10 * foodMultiplier)
     elif mySnake.health < minHealthToSeekFood:
         for direction, value in safePathToTailRoutines.items():
             moveForFood = directionToReachClosestPieceOfFood(board, snakesLookup, snakeId, foods, direction, True)
